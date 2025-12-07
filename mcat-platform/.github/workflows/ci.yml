@@ -1,0 +1,181 @@
+name: MCAT Platform CI
+
+on:
+  push:
+    branches: [ main, master, develop, 'claude/**' ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Start PostgreSQL and Redis
+        run: |
+          cd mcat-platform
+          docker compose up -d postgres redis
+          echo "Waiting for services to be healthy..."
+          sleep 15
+
+      - name: Check Postgres health
+        run: |
+          for i in {1..30}; do
+            if docker exec mcat_postgres pg_isready -U postgres; then
+              echo "✅ PostgreSQL is ready"
+              break
+            fi
+            echo "Waiting for PostgreSQL... ($i/30)"
+            sleep 2
+          done
+
+      - name: Check Redis health
+        run: |
+          for i in {1..30}; do
+            if docker exec mcat_redis redis-cli ping | grep -q PONG; then
+              echo "✅ Redis is ready"
+              break
+            fi
+            echo "Waiting for Redis... ($i/30)"
+            sleep 2
+          done
+
+      - name: Build FastAPI service
+        run: |
+          cd mcat-platform
+          docker compose build fastapi
+
+      - name: Start FastAPI service
+        run: |
+          cd mcat-platform
+          docker compose up -d fastapi
+          echo "Waiting for FastAPI to start..."
+          sleep 10
+
+      - name: Health check - FastAPI
+        run: |
+          for i in {1..30}; do
+            if curl -sSf http://localhost:8000/health; then
+              echo "✅ FastAPI is healthy"
+              break
+            fi
+            echo "Waiting for FastAPI... ($i/30)"
+            sleep 2
+          done
+
+      - name: Test FastAPI endpoints
+        run: |
+          echo "Testing root endpoint..."
+          curl -sSf http://localhost:8000/ | jq .
+
+          echo "Testing health endpoint..."
+          curl -sSf http://localhost:8000/health | jq .
+
+          echo "Testing question fetch..."
+          curl -sSf http://localhost:8000/questions/q-biochem-001 | jq .
+
+      - name: Test inference endpoint with sample data
+        run: |
+          curl -X POST http://localhost:8000/inference/analyze_attempt \
+            -H "Content-Type: application/json" \
+            -d '{
+              "user_id": "550e8400-e29b-41d4-a716-446655440000",
+              "question_id": "q-biochem-001",
+              "answer": "B",
+              "time_ms": 25000,
+              "events": [
+                {"type": "highlight", "value": "inhibitor", "timestamp_offset_ms": 3000},
+                {"type": "highlight", "value": "competitive", "timestamp_offset_ms": 5000}
+              ],
+              "user_tier": "premium",
+              "confidence_level": 4
+            }' | jq .
+
+      - name: Show service logs on failure
+        if: failure()
+        run: |
+          echo "=== PostgreSQL logs ==="
+          docker logs mcat_postgres --tail 50
+          echo "=== Redis logs ==="
+          docker logs mcat_redis --tail 50
+          echo "=== FastAPI logs ==="
+          docker logs mcat_fastapi --tail 100
+
+      - name: Cleanup
+        if: always()
+        run: |
+          cd mcat-platform
+          docker compose down -v
+
+  frontend-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: mcat-platform/frontend/package.json
+
+      - name: Install dependencies
+        run: |
+          cd mcat-platform/frontend
+          npm ci
+
+      - name: Build frontend
+        run: |
+          cd mcat-platform/frontend
+          npm run build
+
+      - name: Check build output
+        run: |
+          cd mcat-platform/frontend
+          ls -la .next/
+
+  database-migration-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Start PostgreSQL with pgvector
+        run: |
+          docker run -d \
+            --name test_postgres \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=mcat_test \
+            -p 5432:5432 \
+            -v $(pwd)/mcat-platform/db/migrations:/docker-entrypoint-initdb.d \
+            ankane/pgvector:latest
+
+          echo "Waiting for PostgreSQL to initialize..."
+          sleep 15
+
+      - name: Verify database schema
+        run: |
+          docker exec test_postgres psql -U postgres -d mcat_test -c "\dt"
+          docker exec test_postgres psql -U postgres -d mcat_test -c "SELECT COUNT(*) FROM users;"
+          docker exec test_postgres psql -U postgres -d mcat_test -c "SELECT COUNT(*) FROM questions;"
+          docker exec test_postgres psql -U postgres -d mcat_test -c "SELECT COUNT(*) FROM concept_nodes;"
+
+      - name: Verify pgvector extension
+        run: |
+          docker exec test_postgres psql -U postgres -d mcat_test -c "SELECT * FROM pg_extension WHERE extname='vector';"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker stop test_postgres
+          docker rm test_postgres
