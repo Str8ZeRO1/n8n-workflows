@@ -2,7 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  output: 'export',  // Required for Capacitor static export
   images: {
+    unoptimized: true,  // Required for static export
     domains: ['localhost'],
   },
   env: {

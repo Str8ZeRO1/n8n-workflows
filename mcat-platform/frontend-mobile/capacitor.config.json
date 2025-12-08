@@ -1,0 +1,14 @@
+{
+  "appId": "com.mcatplatform.app",
+  "appName": "MCAT Platform",
+  "webDir": "out",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true,
+    "allowNavigation": ["*"]
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}
