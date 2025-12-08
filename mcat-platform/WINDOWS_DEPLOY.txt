@@ -1,0 +1,98 @@
+🪟 WINDOWS DEPLOYMENT INSTRUCTIONS
+═══════════════════════════════════════════════════════════
+
+STEP 1: Find your repository location
+─────────────────────────────────────────────────────────
+
+In PowerShell, run:
+    Get-ChildItem -Path C:\ -Filter "n8n-workflows" -Recurse -ErrorAction SilentlyContinue -Depth 3
+
+Or check common locations:
+    cd C:\Users\jay10\n8n-workflows\mcat-platform
+    cd C:\dev\n8n-workflows\mcat-platform
+    cd C:\Projects\n8n-workflows\mcat-platform
+
+
+STEP 2: Navigate to the mcat-platform folder
+─────────────────────────────────────────────────────────
+
+Once you find it:
+    cd <YOUR_PATH>\n8n-workflows\mcat-platform
+
+
+STEP 3: Check if Docker Desktop is running
+─────────────────────────────────────────────────────────
+
+Open Docker Desktop from Windows Start menu
+Or in PowerShell run:
+    docker ps
+
+
+STEP 4: Option A - Run deployment script (if you have bash)
+─────────────────────────────────────────────────────────
+
+If you have Git Bash or WSL:
+    bash deploy-pwa-to-device.sh
+
+Or using WSL:
+    wsl bash deploy-pwa-to-device.sh
+
+
+STEP 4: Option B - Manual deployment (PowerShell native)
+─────────────────────────────────────────────────────────
+
+If bash isn't available, run these commands in PowerShell:
+
+# 1. Get your PC's IP address
+$IP = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.InterfaceAlias -like "*Wi-Fi*" -or $_.InterfaceAlias -like "*Ethernet*"} | Select-Object -First 1).IPAddress
+Write-Host "Your IP: $IP"
+
+# 2. Create environment config
+Set-Content -Path "frontend-mobile\.env.local" -Value "NEXT_PUBLIC_API_URL=http://${IP}:8001"
+
+# 3. Start Docker services
+docker compose up -d postgres redis fastapi_mobile
+
+# 4. Check services are running
+docker compose ps
+
+# 5. Install frontend dependencies (if not done yet)
+cd frontend-mobile
+npm install
+
+# 6. Start frontend on network
+npm run dev -- -H 0.0.0.0 -p 3001
+
+
+STEP 5: Access from your Moto G
+─────────────────────────────────────────────────────────
+
+1. Connect Moto G to SAME WiFi as your PC
+2. Open Chrome on Moto G
+3. Go to: http://<YOUR_PC_IP>:3001
+   (The script will show you the exact IP)
+4. Tap ⋮ menu → "Add to Home Screen"
+5. Done! 🎉
+
+
+TROUBLESHOOTING
+─────────────────────────────────────────────────────────
+
+"Docker is not running":
+  - Open Docker Desktop from Start menu
+  - Wait for it to fully start (green status)
+  - Run: docker ps
+
+"npm: command not found":
+  - Install Node.js from: https://nodejs.org
+  - Restart PowerShell after installing
+
+"Can't access from Moto G":
+  - Check both devices on same WiFi
+  - Check Windows Firewall allows port 3001
+  - Try http://localhost:3001 on PC first
+
+"Permission denied":
+  - Run PowerShell as Administrator
+  - Or use Git Bash instead
+
