@@ -1,0 +1,87 @@
+╔══════════════════════════════════════════════════════════════╗
+║  🚀 MCAT Platform - Deploy to Your Moto G (PWA Method)      ║
+╚══════════════════════════════════════════════════════════════╝
+
+✅ Your Moto G is connected via USB
+✅ All deployment scripts are ready
+✅ Dark theme mobile app is configured
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 STEPS TO DEPLOY (Run on your LOCAL terminal, not here):
+
+1. Open a NEW terminal on your local machine (Windows/Mac/Linux)
+
+2. Navigate to the project:
+   cd /home/user/n8n-workflows/mcat-platform
+
+3. Make sure Docker Desktop is running:
+   - Windows: Start Docker Desktop from Start menu
+   - Mac: Start Docker Desktop from Applications
+   - Linux: sudo systemctl start docker
+
+4. Run the deployment script:
+   ./deploy-pwa-to-device.sh
+
+   This will:
+   ✓ Auto-detect your PC's IP address
+   ✓ Start backend services (Postgres, Redis, FastAPI)
+   ✓ Launch the frontend on your network
+   ✓ Show you a URL like: http://192.168.1.XXX:3001
+
+5. On your Moto G:
+   ✓ Connect to the SAME WiFi as your PC
+   ✓ Open Chrome browser
+   ✓ Go to the URL shown (http://YOUR_PC_IP:3001)
+   ✓ Tap ⋮ menu → "Add to Home Screen"
+   ✓ App icon appears on home screen! 🎉
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚡ QUICK TROUBLESHOOTING:
+
+If Docker isn't running:
+  docker --version     # Check if Docker is installed
+  docker ps           # Check if Docker daemon is running
+
+If script doesn't work:
+  chmod +x *.sh       # Make scripts executable
+  ls -la *.sh         # Verify scripts exist
+
+If you can't access from Moto G:
+  - Verify both devices on same WiFi
+  - Check firewall allows port 3001
+  - Try http://localhost:3001 on PC first
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📱 WHAT YOU'LL SEE:
+
+On your Moto G screen:
+  🌙 Dark theme login page (slate-900 background)
+  🔐 Register/Login forms
+  📊 Dashboard with stats
+  📚 Question bank browser
+  🎯 Interactive practice mode
+  🧠 AI behavioral analysis
+  📈 Progress tracking
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 TIP: PWA vs Native APK
+
+PWA (what we're doing now):
+  ✓ 5 minute setup
+  ✓ Instant testing
+  ✓ Easy updates
+  ✓ Works great for testing
+
+Native APK (later if you want):
+  ./build-android-apk.sh      # Build APK
+  ./deploy-apk-via-adb.sh     # Install via ADB
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 READY! Open your local terminal and run:
+   cd /home/user/n8n-workflows/mcat-platform && ./deploy-pwa-to-device.sh
+
